@@ -11,47 +11,67 @@ class App extends Component {
     handleTimer: '',
     mode: 'ready',
     originalTime: {},
+    nowTime: '',
+    finishTime: '',
   }
   hourRef = createRef();
   minRef = createRef();
   secRef = createRef();
   audioAlarm = new Audio(alarm);
   componentDidMount() {
-    this.timePrint();
+    this.timePrint(1);
   }
-  timePrint = (count) => {
-    const time = { ...this.state.time };
-    if (count) {
-      time.total--;
-    }
+  timePrint = (check) => {
+    const time = check ? { ...this.state.time } : { ...this.state.time, total: (this.state.time.total / 1000) };
     time.hour = Math.floor(time.total / 3600);
     time.min = Math.floor((time.total % 3600) / 60);
-    time.sec = (time.total % 3600) % 60;
+    time.sec = Math.floor((time.total % 3600) % 60);
     this.setState({ time });
   }
 
   timerPlay = () => {
+    // setInterval(() => {
+    //   console.log(Date.now());
+    // }, 1000)
     this.setState((state) => {
+      state.nowTime = Date.now();
+      state.finishTime = state.nowTime + (state.time.total * 1000);
       state.originalTime = { ...this.state.time };
-      console.log(`원본 : ${this.state.originalTime.hour} : ${this.state.originalTime.min} : ${this.state.originalTime.sec}`);
+      // console.log(`원본 : ${this.state.originalTime.hour} : ${this.state.originalTime.min} : ${this.state.originalTime.sec}`);
+
+    }, () => {
+      console.log(`finishTime : ${this.state.finishTime}`);
+      console.log(`nowTime : ${this.state.nowTime}`);
+      this.timerCalculate();
     });
-    this.timerCalculate();
   }
   timerContinue = () => {
     this.setState({ mode: 'play' });
     this.timerCalculate();
   }
   timerCalculate = () => {
-    this.state.handleTimer = setInterval(() => {
-      if (this.state.time.total <= 0) {
-        this.setState({ mode: 'end' });
-        this.audioAlarm.currentTime = 0;
-        this.audioAlarm.play();
-        return clearInterval(this.state.handleTimer);
-      }
-      this.setState({ mode: 'play' });
-      this.timePrint(-1);
-    }, 1000);
+    this.setState({
+      handleTimer: setInterval(() => {
+        if (this.state.nowTime >= this.state.finishTime) {
+          console.log(`nowTime : ${this.state.nowTime}`);
+          console.log(`finishTime : ${this.state.finishTime}`);
+          this.setState({ mode: 'end', time: { ...this.state.time, total: 0 } }, () => {
+            this.audioAlarm.currentTime = 0;
+            this.audioAlarm.play();
+            this.timePrint(1);
+            clearInterval(this.state.handleTimer);
+          });
+        } else {
+          this.setState({ mode: 'play', nowTime: Date.now() }, () => {
+            this.setState({ time: { ...this.state.time, total: this.state.finishTime - this.state.nowTime } }, () => {
+              if (this.state.time.total >= 0) {
+                this.timePrint();
+              }
+            });
+          });
+        }
+      }, 1000)
+    })
   }
   timerStop = () => {
     this.setState({ mode: 'stop' });
@@ -64,7 +84,7 @@ class App extends Component {
     // });
     this.setState({ time: { ...this.state.originalTime }, mode: 'ready' }, () => {
       this.audioAlarm.pause();
-      this.timePrint();
+      this.timePrint(1);
     });
   }
   settingTime = () => {
@@ -76,7 +96,7 @@ class App extends Component {
     console.log(total);
     const time = { ...this.state.time, total };
     this.setState({ time }, () => {
-      this.timePrint();
+      this.timePrint(1);
     });
   }
   render() {
